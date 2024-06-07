@@ -9,7 +9,7 @@
 
     // Pontuação
     let currentScore = 0;
-    let currentLevel = 0;
+    let currentLevel = 1;
     let linesCleared = 0;
 
     // Parâmetros de tempo para o jogo
@@ -334,6 +334,190 @@
             if(xx < gameEdgeLeft || xx >= gameEdgeRight || yy >= height){
                 return true;
             }
+            for(let j = 0; j < gridPieces.length; j++){
+                if (xx === gridPieces[j].pos.x){
+                    if (yy >= gridPieces[j].pos.y && yy < gridPieces[j].pos.y + gridSpace){
+                        return true;
+                    }
+                    if (yy + gridSpace === gridPieces[j].pos.y && yy + gridSpace <=  gridPieces[j].pos.y + gridSpace){
+                        return true;
+                    }
+                        
+                }
+            }
         }
     }
+
+    //Mexe com o input do usuario
+    input(key){
+        switch (key){
+            case LEFT_ARROW:
+                if (!this.futureCollision(-gridSpace, 0, this.rotation)){
+                    this.addPos(-gridSpace, 0);
+                }
+                break;
+            case RIGHT_ARROW:
+                if (!this.futureCollision(gridSpace, 0, this.rotation)){
+                    this.addPos(gridSpace, 0);
+                }
+                break;
+            case UP_ARROW:
+                let newRotation = this.rotation + 1;
+                if (newRotation > 3){
+                    newRotation = 0;
+                }
+                if (!this.futureCollision(0, 0, newRotation)){
+                    this.rotation = newRotation;
+                    this.updatePoints();
+                }
+                break; 
+        }
+    }
+
+    //Rotaciona e peça
+    rotate(){
+        this.rotation += 1;
+        if (this.rotation > 3){
+            this.rotation = 0;
+        }
+        this.updatePoints();
+    }
+
+    //mostra a peça atual
+    show(){
+        for (let i = 0; i < this.pieces.length; i++){
+            this.pieces[i].show();
+        }
+        for(let i = 0; i < this.nextPieces.length; i++){
+            this.nextPieces[i].show();
+        }
+    }
+
+    //Comita a peça no grid
+    commitShape(){
+        for (let i = 0; i < this.pieces.length; i++){
+            gridPieces.push(this.pieces[i]);
+        }
+        this.resetPiece();
+        analyzeGrid();
+    }
+}
+
+//Classe que representa cada quadrado em cada peça
+class Square{
+    constructor(x, y, type){
+        this.pos = createVector(x, y);
+        this.type = type;
+    }
+
+    show(){
+        strokeWeight(2);
+        const colorDark = '#092e1d';
+        const colorMid = colors[this.type];
+
+        fill(colorMid);
+        stroke(25);
+        rect(this.pos.x, this.pos.y, gridSpace - 1, gridSpace - 1);
+
+        noStroke();
+        fill(255);
+        rect(this.pos.x + 6, this.pos.y + 6, 18, 2);
+        rect(this.pos.x + 6, this.pos.y + 6, 2, 16);
+        fill(25);
+        rect(this.pos.x + 6, this.pos.y + 20, 18, 2);
+        rect(this.pos.x + 6, this.pos.y + 6, 18, 16);
+    }
+}
+
+
+//Gera pseudo numero para a proxima peça
+function pseudoRandom(previous){
+    let roll = Math.floor(Math.random() * 8);
+    if (roll === previous || roll === 7){
+        roll = Math.floor(Math.random() * 7);
+    }
+    return roll;
+}
+
+//Analisa o grid para ver se tem linhas completas
+function analyzeGrid(){
+    let score = 0;
+    while(checkLines()){
+        score += 100;
+        linesCleared += 1;
+        if (linesCleared % 10 === 0){
+            currentLevel += 1;
+            if (updateEveryCurrent > 2){
+                updateEveryCurrent -= 1;
+            }
+        }
+    }
+    if (score >100){
+        score *= 2;
+    }
+    currentScore += score;
+}
+
+//Checa se tem linhas completas
+function checkLines(){
+    for (let y = 0; y < height; y += gridSpace){
+        let count = 0;
+        for (let i = 0; i < gridPieces.length; i++){
+            if (gridPieces[i].pos.y === y){
+                count++;
+            }
+        }
+        if (count === 10){
+            gridPieces = gridPieces.filter(piece => piece.pos.y !== y);
+            //Move as peças para baixo
+            for (let i = 0; i < gridPieces.length; i++){
+                if (gridPieces[i].pos.y < y){
+                    gridPieces[i].pos.y += gridSpace;
+                }
+            }
+            return true;
+        }
+    }
+    return true;
+}
+
+//Classe trabalhadora ☭ para apagar linhas
+class Worker{
+    constructor(y, amount){
+        this.amountActual = 0;
+        this.amountTotal = amount;
+        this.yVal = y;
+    }
+
+    //Trabalha na linha
+    work(){
+        if(this.amountActual < this.amountTotal){
+            for (let j = 0; j < gridPieces.length; j++){
+                if (gridPieces[j].pos.y){
+                    gridPieces[j].pos.y += 5;
+                }
+            }
+            this.amountActual += 5;
+        }else{
+            gridWorkers.shift();
+        }
+    }
+}
+
+
+//Reinicia o jogo
+function resetGame(){
+    fallingPiece = new PlayPiece();
+    gridPieces = [];
+    lineFades = [];
+    gridWorkers = [];
+    currentScore = 0;
+    currentLevel = 1;
+    linesCleared = 0;
+    ticks = 0;
+    updateEvery = 15;
+    updateEveryCurrent = 15;
+    fallSpeed = gridSpace * 0.5;
+    pauseGame = false;
+    gameOver = false;
 }
